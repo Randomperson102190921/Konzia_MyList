@@ -105,79 +105,83 @@
 <body>
 
 <!-- ---------- loading screen ---------- -->
-<div id="loadingScreen">
+<div id="loadingScreen" aria-live="polite" aria-busy="true">
   <div class="brand">Konzia</div>
-  <div class="ring"></div>
+  <div class="ring" aria-label="Loading spinner"></div>
 </div>
 
 <!-- ---------- main app ---------- -->
-<div id="app" style="display:none">
+<div id="app" style="display:none" role="main" aria-hidden="true">
   <header>KONZIA – My List</header>
-  <div class="tabs">
-    <div class="tab active" data-tab="catalog">Catalog</div>
-    <div class="tab" data-tab="list">My List</div>
-  </div>
+  <nav class="tabs" role="tablist">
+    <div class="tab active" data-tab="catalog" role="tab" aria-selected="true" tabindex="0" aria-controls="catalog">Catalog</div>
+    <div class="tab" data-tab="list" role="tab" aria-selected="false" tabindex="-1" aria-controls="list">My List</div>
+  </nav>
 
-  <div id="catalog" class="content"></div>
-  <div id="list" class="content" style="display:none;"></div>
-  <div class="total" id="total">Total: R0.00</div>
+  <section id="catalog" class="content" role="tabpanel" aria-labelledby="catalog-tab"></section>
+  <section id="list" class="content" style="display:none;" role="tabpanel" aria-labelledby="list-tab"></section>
+  <div class="total" id="total" aria-live="polite" aria-atomic="true">Total: R0.00</div>
 </div>
 
 <script>
-  /* ----------  LIVE ENDPOINT  ---------- */
   const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwWlfeN4OijCyUvL4FCdcwDY10ZYnERuKV0E3cDZ-VZH1WFxEErFusOi3nzld3WKbb0aw/exec';
   const STORAGE_KEY = 'konzia-myList';
 
   let catalog = [];
   let myList = [];
   const watchers = {};
+  let activeTab = 'catalog';
 
-  /* ----------  LocalStorage helpers  ---------- */
+  // Save list to localStorage
   function saveList() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(myList.map(item => ({
-      id: item.id,
-      name: item.name,
-      priceInfo: item.priceInfo
-    }))));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(myList.map(item => ({
+        id: item.id,
+        name: item.name,
+        priceInfo: item.priceInfo
+      }))));
+    } catch(e) {
+      console.warn('Failed to save list:', e);
+    }
   }
 
+  // Load list from localStorage, match with current catalog items
   function loadList() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
       const saved = JSON.parse(raw);
-      // Match saved items with current catalog to get updated data, keep saved priceInfo
       return saved.map(item => {
         const base = catalog.find(p => p.id === item.id);
         return base ? { ...base, priceInfo: item.priceInfo } : null;
       }).filter(Boolean);
-    } catch (e) {
-      console.warn('Failed to load saved list:', e);
+    } catch(e) {
+      console.warn('Failed to load list:', e);
       return [];
     }
   }
 
-  /* ----------  API helpers  ---------- */
+  // Fetch catalog from backend
   async function getCatalog() {
     try {
-      const r = await fetch(SHEET_URL, { method: 'GET' });
-      if (!r.ok) throw new Error(`Catalog fetch failed (${r.status})`);
+      const r = await fetch(SHEET_URL);
+      if (!r.ok) throw new Error(`Catalog fetch failed with status ${r.status}`);
       const j = await r.json();
       return Array.isArray(j?.products) ? j.products : [];
-    } catch (e) {
-      console.error('Failed to fetch catalog:', e);
+    } catch(e) {
+      console.error('Error fetching catalog:', e);
       return [];
     }
   }
 
+  // Fetch price info for one product
   async function getPrice(productName) {
     try {
       const url = new URL(SHEET_URL);
       url.searchParams.set('product', productName);
-      const r = await fetch(url, { method: 'GET' });
-      if (!r.ok) throw new Error(`Price fetch failed (${r.status})`);
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`Price fetch failed with status ${r.status}`);
       const data = await r.json();
-      // Defensive fallback for priceInfo fields
       return {
         avgPrice: parseFloat(data.avgPrice) || 0,
         cheapestPrice: parseFloat(data.cheapestPrice) || 0,
@@ -187,9 +191,8 @@
           max: parseFloat(data.priceRange?.max) || 0
         }
       };
-    } catch (e) {
-      console.error('Failed to fetch price for', productName, e);
-      // Return empty price info on error
+    } catch(e) {
+      console.error(`Failed to fetch price for ${productName}:`, e);
       return {
         avgPrice: 0,
         cheapestPrice: 0,
@@ -199,38 +202,39 @@
     }
   }
 
-  /* ----------  Render helpers  ---------- */
+  // Render catalog tab
   function renderCatalog() {
-    const c = document.getElementById('catalog');
-    c.innerHTML = '';
-    if (!catalog.length) {
-      c.innerHTML = '<div class="empty">No products in sheet yet.</div>';
+    const container = document.getElementById('catalog');
+    container.innerHTML = '';
+    if (catalog.length === 0) {
+      container.innerHTML = '<div class="empty">No products in sheet yet.</div>';
       return;
     }
     catalog.forEach(p => {
       const inList = myList.some(i => i.id === p.id);
-      const div = document.createElement('div');
-      div.className = 'card';
-      div.innerHTML = `
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
         <div class="info"><h4>${p.name}</h4></div>
-        <button class="btn ${inList ? 'remove-btn' : 'add-btn'}" data-id="${p.id}" ${inList ? '' : ''}>${inList ? 'Added' : 'Add'}</button>
+        <button class="btn ${inList ? 'remove-btn' : 'add-btn'}" data-id="${p.id}">${inList ? 'Added' : 'Add'}</button>
       `;
-      c.appendChild(div);
+      container.appendChild(card);
     });
   }
 
+  // Render list tab
   function renderList() {
-    const l = document.getElementById('list');
-    l.innerHTML = '';
-    if (!myList.length) {
-      l.innerHTML = '<div class="empty">Your list is empty.</div>';
+    const container = document.getElementById('list');
+    container.innerHTML = '';
+    if (myList.length === 0) {
+      container.innerHTML = '<div class="empty">Your list is empty.</div>';
       updateTotal(0);
       return;
     }
     myList.forEach(item => {
-      const div = document.createElement('div');
-      div.className = 'card';
-      div.innerHTML = `
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
         <div class="info">
           <h4>${item.name}</h4>
           <div class="price">
@@ -241,32 +245,38 @@
         </div>
         <button class="btn remove-btn" data-id="${item.id}">Remove</button>
       `;
-      l.appendChild(div);
+      container.appendChild(card);
     });
-    const total = myList.reduce((s, i) => s + parseFloat(i.priceInfo.cheapestPrice || 0), 0);
+    const total = myList.reduce((sum, item) => sum + (parseFloat(item.priceInfo.cheapestPrice) || 0), 0);
     updateTotal(total);
   }
 
+  // Update total price display
   function updateTotal(amount) {
     document.getElementById('total').textContent = 'Total: R' + amount.toFixed(2);
   }
 
-  /* ----------  Background watcher  ---------- */
+  // Start watching price for a list item (poll every 15 min)
   function startWatcher(item) {
-    if (watchers[item.id]) return; // prevent duplicate watchers
+    if (watchers[item.id]) return; // avoid duplicates
     watchers[item.id] = setInterval(async () => {
-      const newInfo = await getPrice(item.name);
-      const oldPrice = parseFloat(item.priceInfo.cheapestPrice) || 0;
-      const newPrice = parseFloat(newInfo.cheapestPrice) || 0;
-      if (newPrice < oldPrice) {
-        alert(`Price drop! ${item.name} is now R${newPrice.toFixed(2)} at ${newInfo.cheapestStore} (was R${oldPrice.toFixed(2)})`);
-        item.priceInfo = newInfo;
-        saveList();
-        if (activeTab === 'list') renderList();
+      try {
+        const newInfo = await getPrice(item.name);
+        const oldPrice = parseFloat(item.priceInfo.cheapestPrice) || 0;
+        const newPrice = parseFloat(newInfo.cheapestPrice) || 0;
+        if (newPrice < oldPrice) {
+          alert(`Price drop! ${item.name} is now R${newPrice.toFixed(2)} at ${newInfo.cheapestStore} (was R${oldPrice.toFixed(2)})`);
+          item.priceInfo = newInfo;
+          saveList();
+          if (activeTab === 'list') renderList();
+        }
+      } catch (e) {
+        console.warn('Watcher error:', e);
       }
-    }, 15 * 60 * 1000); // every 15 minutes
+    }, 15 * 60 * 1000);
   }
 
+  // Stop watcher for removed items
   function stopWatcher(id) {
     if (watchers[id]) {
       clearInterval(watchers[id]);
@@ -274,70 +284,91 @@
     }
   }
 
-  /* ----------  Event delegation  ---------- */
-  document.addEventListener('click', async e => {
+  // Handle Add/Remove button clicks with event delegation
+  document.addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const id = btn.dataset.id;
-    const prod = catalog.find(p => p.id === id) || myList.find(i => i.id === id);
-    if (!prod) return;
+    if (!id) return;
 
-    if (btn.textContent.trim() === 'Add') {
+    // Find product in catalog or list
+    const prodInCatalog = catalog.find(p => p.id === id);
+    const prodInList = myList.find(p => p.id === id);
+
+    // Add item
+    if (btn.textContent.trim() === 'Add' && prodInCatalog) {
       btn.disabled = true;
       btn.textContent = '…';
       try {
-        const priceInfo = await getPrice(prod.name);
-        myList.push({ ...prod, priceInfo });
+        const priceInfo = await getPrice(prodInCatalog.name);
+        myList.push({ ...prodInCatalog, priceInfo });
         saveList();
+        startWatcher(myList.at(-1));
         btn.textContent = 'Added';
         btn.className = 'btn remove-btn';
-        startWatcher(myList.at(-1));
         if (activeTab === 'list') renderList();
       } catch (e) {
-        alert('Failed to add item price info, try again.');
+        alert('Failed to add item. Try again.');
+        console.error('Add item error:', e);
         btn.textContent = 'Add';
       }
       btn.disabled = false;
-    } else {
-      // Remove from list
-      myList = myList.filter(i => i.id !== id);
+      renderCatalog(); // refresh catalog buttons to update added status
+      return;
+    }
+
+    // Remove item
+    if (btn.textContent.trim() === 'Remove' && prodInList) {
+      myList = myList.filter(item => item.id !== id);
       saveList();
       stopWatcher(id);
       renderCatalog();
       if (activeTab === 'list') renderList();
+      return;
     }
   });
 
-  /* ----------  Tabs switching ---------- */
-  let activeTab = 'catalog';
-  document.querySelectorAll('.tab').forEach(tab =>
+  // Tab switching logic
+  document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
+      if (tab.classList.contains('active')) return; // ignore repeated clicks
       document.querySelector('.tab.active').classList.remove('active');
       tab.classList.add('active');
-      document.querySelectorAll('.content').forEach(c => c.style.display = 'none');
+
       const target = tab.dataset.tab;
-      document.getElementById(target).style.display = 'block';
       activeTab = target;
-      if (target === 'list') renderList();
-      else if (target === 'catalog') renderCatalog();
-    })
-  );
 
-  /* ----------  Boot (with loader) ---------- */
+      document.querySelectorAll('.content').forEach(c => c.style.display = 'none');
+      document.getElementById(target).style.display = 'block';
+
+      if (target === 'catalog') renderCatalog();
+      else if (target === 'list') renderList();
+    });
+  });
+
+  // Initial app boot with error handling
   (async () => {
-    catalog = await getCatalog();
-    myList = loadList();
-    renderCatalog();
-    myList.forEach(startWatcher);
+    try {
+      catalog = await getCatalog();
+      myList = loadList();
+      renderCatalog();
+      myList.forEach(startWatcher);
 
-    const loading = document.getElementById('loadingScreen');
-    const app = document.getElementById('app');
-    setTimeout(() => {
-      loading.classList.add('fade-out');
-      app.style.display = 'block';
-    }, 1000);
+      // Show app, hide loader
+      const loading = document.getElementById('loadingScreen');
+      const app = document.getElementById('app');
+      setTimeout(() => {
+        loading.classList.add('fade-out');
+        app.style.display = 'block';
+        app.setAttribute('aria-hidden', 'false');
+        loading.setAttribute('aria-busy', 'false');
+      }, 1000);
+    } catch (e) {
+      console.error('Failed to boot app:', e);
+      alert('Failed to load app data. Please try again later.');
+      document.getElementById('loadingScreen').classList.add('fade-out');
+    }
   })();
-
 </script>
 </body>
 </html>
