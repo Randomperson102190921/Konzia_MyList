@@ -6,30 +6,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
 
   <!-- HTTPS only -->
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self';
-                 script-src  'self' https://www.google.com https://www.gstatic.com;
-                 style-src   'self' https://fonts.googleapis.com 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=';  /* hash for preload spinner */
-                 font-src    https://fonts.gstatic.com;
-                 img-src     'self' data: https:;
-                 connect-src 'self' https://script.google.com;">
   <script>
-    /* HTTPS redirect if needed */
     if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
       location.replace('https://' + location.host + location.pathname + location.search);
     }
   </script>
 
-  <!-- Google Fonts with SRI -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet"
-        integrity="sha384-…your-SRI-hash…"
-        crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    /* ---------- same CSS as before, unchanged ---------- */
     :root{
       --brand:#0b8043;
       --brand-light:#e6f4ea;
@@ -136,11 +124,11 @@
   <div class="total" id="total">Total: R0.00</div>
 </div>
 
-<!-- reCAPTCHA v2 invisible -->
+<!-- reCAPTCHA -->
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 <script>
-  /* ----------  LIVE ENDPOINT  ---------- */
+  /* ----------  CONFIG  ---------- */
   const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwWlfeN4OijCyUvL4FCdcwDY10ZYnERuKV0E3cDZ-VZH1WFxEErFusOi3nzld3WKbb0aw/exec';
   const RECAPTCHA_SITE_KEY = '6LcZK6ArAAAAAN4KHfdZ0W_UdBOvKX1KxZxeiWZk';
   const STORAGE_KEY = 'konzia-myList';
@@ -149,7 +137,7 @@
   let myList  = [];
   const watchers = {};
 
-  /* ----------  Helpers to create safe DOM  ---------- */
+  /* ----------  SAFE DOM UTIL  ---------- */
   function el(tag, props = {}, ...children) {
     const e = document.createElement(tag);
     Object.assign(e, props);
@@ -160,13 +148,9 @@
     return e;
   }
 
-  /* ----------  LocalStorage helpers  ---------- */
+  /* ----------  LOCAL STORAGE  ---------- */
   function saveList() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(myList.map(item => ({
-      id: item.id,
-      name: item.name,
-      priceInfo: item.priceInfo
-    }))));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(myList.map(i => ({id:i.id,name:i.name,priceInfo:i.priceInfo}))));
   }
   function loadList() {
     try {
@@ -174,20 +158,16 @@
       if (!raw) return [];
       return JSON.parse(raw).map(item => {
         const base = catalog.find(p => p.id === item.id);
-        return base ? { ...base, priceInfo: item.priceInfo } : null;
+        return base ? {...base, priceInfo: item.priceInfo} : null;
       }).filter(Boolean);
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   }
 
-  /* ----------  Secure API helpers  ---------- */
+  /* ----------  API (with reCAPTCHA)  ---------- */
   async function getReCaptchaToken(action='price') {
     return new Promise((resolve, reject)=>{
       if (!window.grecaptcha) return reject('reCAPTCHA not loaded');
-      grecaptcha.ready(()=>{
-        grecaptcha.execute(RECAPTCHA_SITE_KEY, {action}).then(resolve, reject);
-      });
+      grecaptcha.ready(()=> grecaptcha.execute(RECAPTCHA_SITE_KEY, {action}).then(resolve, reject));
     });
   }
   async function getCatalog() {
@@ -198,110 +178,87 @@
   }
   async function getPrice(product) {
     const token = await getReCaptchaToken('price');
-    const r = await fetch(SHEET_URL, {
-      method:'POST',
-      body:new URLSearchParams({product,token})
-    });
+    const r = await fetch(SHEET_URL, {method:'POST',body:new URLSearchParams({product,token})});
     return r.json();
   }
 
-  /* ----------  Render helpers  ---------- */
+  /* ----------  RENDER  ---------- */
   function renderCatalog() {
-    const c = document.getElementById('catalog');
-    c.innerHTML='';
-    if (!catalog.length){
-      c.appendChild(el('div',{className:'empty'},'No products in sheet yet.'));
-      return;
-    }
+    const c = document.getElementById('catalog'); c.innerHTML='';
+    if (!catalog.length) { c.appendChild(el('div',{className:'empty'},'No products in sheet yet.')); return; }
     catalog.forEach(p=>{
       const inList = myList.some(i=>i.id===p.id);
-      const card = el('div',{className:'card'},
-        el('div',{className:'info'}, el('h4',{}, p.name)),
-        el('button',{className:inList?'btn remove-btn':'btn add-btn',dataset:{id:p.id}}, inList?'Added':'Add')
+      c.appendChild(
+        el('div',{className:'card'},
+          el('div',{className:'info'}, el('h4',{}, p.name)),
+          el('button',{className:'btn '+(inList?'remove-btn':'add-btn'),dataset:{id:p.id}}, inList?'Added':'Add')
+        )
       );
-      c.appendChild(card);
     });
   }
   function renderList() {
-    const l=document.getElementById('list');
-    l.innerHTML='';
-    if(!myList.length){
-      l.appendChild(el('div',{className:'empty'},'Your list is empty.'));
-      updateTotal(0);
-      return;
-    }
+    const l=document.getElementById('list'); l.innerHTML='';
+    if(!myList.length){ l.appendChild(el('div',{className:'empty'},'Your list is empty.')); updateTotal(0); return; }
     myList.forEach(item=>{
-      const div=el('div',{className:'card'},
-        el('div',{className:'info'},
-          el('h4',{}, item.name),
-          el('div',{className:'price'},
-            `Avg: R${item.priceInfo.avgPrice}`,
-            el('br'),
-            `Cheapest: `,
-            el('b',{}, `${item.priceInfo.cheapestStore} – R${item.priceInfo.cheapestPrice}`),
-            el('br'),
-            `Range: R${item.priceInfo.priceRange.min} – R${item.priceInfo.priceRange.max}`
-          )
-        ),
-        el('button',{className:'btn remove-btn',dataset:{id:item.id}},'Remove')
+      l.appendChild(
+        el('div',{className:'card'},
+          el('div',{className:'info'},
+            el('h4',{}, item.name),
+            el('div',{className:'price'},
+              `Avg: R${item.priceInfo.avgPrice}`, el('br'),
+              'Cheapest: ', el('b',{}, `${item.priceInfo.cheapestStore} – R${item.priceInfo.cheapestPrice}`), el('br'),
+              `Range: R${item.priceInfo.priceRange.min} – R${item.priceInfo.priceRange.max}`
+            )
+          ),
+          el('button',{className:'btn remove-btn',dataset:{id:item.id}},'Remove')
+        )
       );
-      l.appendChild(div);
     });
     const total=myList.reduce((s,i)=>s+parseFloat(i.priceInfo.cheapestPrice),0);
     updateTotal(total);
   }
-  function updateTotal(amount){
-    document.getElementById('total').textContent='Total: R'+amount.toFixed(2);
-  }
+  function updateTotal(amount){ document.getElementById('total').textContent='Total: R'+amount.toFixed(2); }
 
-  /* ----------  Background watcher  ---------- */
+  /* ----------  WATCHER  ---------- */
   function startWatcher(item){
-    if(watchers[item.id])return;
+    if(watchers[item.id]) return;
     watchers[item.id]=setInterval(async()=>{
       try {
         const newInfo=await getPrice(item.name);
         const old=parseFloat(item.priceInfo.cheapestPrice);
         const now=parseFloat(newInfo.cheapestPrice);
-        if(now<old){
-          alert(`Price drop! ${item.name} is now R${now} at ${newInfo.cheapestStore} (was R${old})`);
-          item.priceInfo=newInfo;
-          saveList();
-          renderList();
-        }
-      } catch(e){
-        console.error('Watcher error',e);
-      }
+        if(now<old){ alert(`Price drop! ${item.name} is now R${now} (was R${old})`); item.priceInfo=newInfo; saveList(); renderList(); }
+      } catch(e){ console.error('Watcher error',e); }
     },15*60*1000);
   }
-  function stopWatcher(id){
-    if(watchers[id]){clearInterval(watchers[id]);delete watchers[id];}
-  }
+  function stopWatcher(id){ if(watchers[id]){ clearInterval(watchers[id]); delete watchers[id]; } }
 
-  /* ----------  Event delegation  ---------- */
+  /* ----------  EVENTS  ---------- */
   document.addEventListener('click',async e=>{
     const btn=e.target.closest('button');
-    if(!btn)return;
+    if(!btn) return;
     const id=btn.dataset.id;
-    const prod=catalog.find(p=>p.id===id)||myList.find(i=>i.id===id);
-    if(!prod)return;
+    const prod=catalog.find(p=>p.id===id) || myList.find(i=>i.id===id);
+    if(!prod) return;
+
     if(btn.textContent.trim()==='Add'){
-      btn.disabled=true;btn.textContent='…';
+      btn.disabled=true; btn.textContent='…';
       try {
         const priceInfo=await getPrice(prod.name);
         myList.push({...prod,priceInfo});
         saveList();
-        btn.textContent='Added';btn.className='btn remove-btn';btn.disabled=false;
+        btn.textContent='Added'; btn.className='btn remove-btn'; btn.disabled=false;
         startWatcher(myList.at(-1));
-        if(activeTab==='list')renderList();
+        if(activeTab==='list') renderList();
       } catch(err){
-        alert('Could not load price: ' + err);
-        btn.disabled=false;btn.textContent='Add';
+        alert('Could not load price: '+err);
+        btn.disabled=false; btn.textContent='Add';
       }
     }else{
       myList=myList.filter(i=>i.id!==id);
       saveList();
       stopWatcher(id);
-      renderCatalog();renderList();
+      renderCatalog(); renderList();
     }
   });
 
@@ -314,11 +271,11 @@
       const target=tab.dataset.tab;
       document.getElementById(target).style.display='block';
       activeTab=target;
-      if(target==='list')renderList();
+      if(target==='list') renderList();
     })
   );
 
-  /* ----------  Boot (with loader)  ---------- */
+  /* ----------  BOOT  ---------- */
   (async()=>{
     catalog=await getCatalog();
     myList=loadList();
@@ -326,10 +283,7 @@
     myList.forEach(item=>startWatcher(item));
     const loading=document.getElementById('loadingScreen');
     const app=document.getElementById('app');
-    setTimeout(()=>{
-      loading.classList.add('fade-out');
-      app.style.display='block';
-    },1000);
+    setTimeout(()=>{ loading.classList.add('fade-out'); app.style.display='block'; },1000);
   })();
 </script>
 </body>
