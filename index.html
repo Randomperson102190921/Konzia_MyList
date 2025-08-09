@@ -4,116 +4,37 @@
   <meta charset="utf-8"/>
   <title>KONZIA – My List</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-
-  <!-- Security -->
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self';
-                 script-src 'self' https://www.google.com https://www.gstatic.com;
-                 connect-src 'self' https://script.google.com https://script.googleusercontent.com https://www.google.com;
-                 font-src 'self' https://fonts.gstatic.com;
-                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-                 img-src 'self' data: https://via.placeholder.com;
-                 object-src 'none'; base-uri 'none'; form-action 'none';
-                 upgrade-insecure-requests">
-  <meta name="referrer" content="no-referrer">
-  <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="X-Frame-Options" content="DENY">
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
   <style>
-    :root{
-      --brand:#0b8043;
-      --brand-light:#e6f4ea;
-      --surface:#ffffff;
-      --surface-variant:#f8faf8;
-      --on-surface:#1f1f1f;
-      --on-surface-variant:#444746;
-      --outline:#c4c7c5;
-      --outline-variant:#e1e3e1;
-      --error:#c62828;
-      --radius:20px;
-      --radius-pill:100px;
-      --shadow-1:0 2px 8px 0 rgba(0,0,0,.06),0 2px 4px 0 rgba(0,0,0,.04);
-      --shadow-2:0 4px 12px 0 rgba(0,0,0,.08),0 2px 8px 0 rgba(0,0,0,.06);
-    }
+    :root{--brand:#0b8043;--surface:#ffffff;--surface-variant:#f8faf8;--on-surface:#1f1f1f}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{
-      font-family:'Google Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-      background:var(--surface-variant);
-      color:var(--on-surface);
-      min-height:100vh;
-      padding:24px;
-      font-size:15px;
-    }
-    #loadingScreen{
-      position:fixed;inset:0;background:#fff;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      z-index:9999;transition:opacity .4s ease,visibility .4s ease;
-    }
+    body{font-family:'Google Sans',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;background:var(--surface-variant);color:var(--on-surface);min-height:100vh;padding:24px;font-size:15px}
+    #loadingScreen{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s ease}
     #loadingScreen.fade-out{opacity:0;visibility:hidden}
     #loadingScreen .brand{font-size:32px;font-weight:600;color:var(--brand);margin-bottom:8px;animation:pulse 2s ease-in-out infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
-    .ring{width:40px;height:40px;border:4px solid var(--outline-variant);border-top-color:var(--brand);border-radius:50%;animation:spin 1s linear infinite}
+    .ring{width:40px;height:40px;border:4px solid #ccc;border-top-color:var(--brand);border-radius:50%;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
-    header{
-      position:sticky;top:0;z-index:10;
-      background:var(--brand);color:#fff;
-      padding:16px 24px;font-weight:600;font-size:1.25rem;
-      border-radius:var(--radius) var(--radius) 0 0;
-    }
-    .tabs{
-      display:flex;background:var(--surface);
-      box-shadow:var(--shadow-1);
-    }
-    .tab{
-      flex:1;text-align:center;padding:18px 0;
-      font-weight:600;font-size:.95rem;
-      color:var(--on-surface-variant);cursor:pointer;
-      transition:.2s;
-    }
+    header{position:sticky;top:0;background:var(--brand);color:#fff;padding:16px 24px;font-weight:600;font-size:1.25rem;border-radius:20px 20px 0 0;z-index:10}
+    .tabs{display:flex;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .tab{flex:1;text-align:center;padding:18px 0;font-weight:600;cursor:pointer;color:#444}
     .tab.active{color:var(--brand);border-bottom:2px solid var(--brand)}
     .content{padding:24px}
-    .card{
-      display:flex;align-items:center;
-      background:var(--surface);
-      border-radius:var(--radius);
-      margin-bottom:12px;
-      box-shadow:var(--shadow-1);
-      padding:16px;
-      transition:.25s;
-    }
-    .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
-    .info{flex:1;padding:0 12px}
-    .info h4{margin:0 0 4px;font-size:1rem;color:var(--on-surface)}
-    .price{font-size:.85rem;color:var(--on-surface-variant)}
-    .price b{color:var(--on-surface)}
-    .btn{
-      padding:8px 18px;
-      border:none;border-radius:var(--radius-pill);
-      font-weight:600;font-size:.85rem;
-      cursor:pointer;transition:.2s;
-    }
+    .card{display:flex;align-items:center;background:#fff;border-radius:20px;margin-bottom:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .info{flex:1;padding-right:12px}
+    .info h4{margin:0 0 4px;font-size:1rem}
+    .price{font-size:.85rem;color:#555}
+    .price b{color:#000}
+    .btn{padding:8px 18px;border:none;border-radius:100px;font-weight:600;font-size:.85rem;cursor:pointer}
     .add-btn{background:var(--brand);color:#fff}
-    .add-btn:hover{background:#086e3b}
-    .remove-btn{background:var(--outline-variant);color:var(--on-surface)}
-    .remove-btn:hover{background:var(--outline)}
-    .empty{text-align:center;margin-top:40px;color:var(--on-surface-variant)}
-    .total{
-      position:fixed;bottom:0;left:0;right:0;
-      background:var(--surface);padding:16px;
-      text-align:center;font-weight:600;font-size:1rem;
-      box-shadow:0 -2px 8px rgba(0,0,0,.06)
-    }
-    /* Invisible reCAPTCHA badge */
-    .grecaptcha-badge{visibility:hidden;}
+    .remove-btn{background:#e1e3e1;color:#000}
+    .empty{text-align:center;margin-top:40px;color:#666}
+    .total{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:16px;text-align:center;font-weight:600;font-size:1rem;box-shadow:0 -2px 8px rgba(0,0,0,.06)}
   </style>
 </head>
 <body>
 
-<!-- ---------- loading screen ---------- -->
+<!-- ---------- loading screen with Konzia ---------- -->
 <div id="loadingScreen">
   <div class="brand">Konzia</div>
   <div class="ring"></div>
@@ -126,63 +47,55 @@
     <div class="tab active" data-tab="catalog">Catalog</div>
     <div class="tab" data-tab="list">My List</div>
   </div>
-
   <div id="catalog" class="content"></div>
-  <div id="list" class="content" style="display:none;"></div>
+  <div id="list" class="content" style="display:none"></div>
   <div class="total" id="total">Total: R0.00</div>
 </div>
 
-<!-- Invisible reCAPTCHA -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <script>
-  /* ----------  CONFIG  ---------- */
-  const RECAPTCHA_SITE_KEY = '6LcZK6ArAAAAAN4KHfdZ0W_UdBOvKX1KxZxeiWZk';
+  /******** CONFIG ********/
   const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwWlfeN4OijCyUvL4FCdcwDY10ZYnERuKV0E3cDZ-VZH1WFxEErFusOi3nzld3WKbb0aw/exec';
-  const STORAGE_KEY = 'konzia-myList-v1';
+  const STORAGE_KEY = 'konzia-myList_v3';
 
   let catalog = [];
   let myList  = [];
   const watchers = {};
   const MAX_WATCHERS = 20;
 
-  /* ----------  helpers ---------- */
+  /******** HELPERS ********/
   const esc = str => {
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
   };
-  const verifyCaptcha = () =>
-    new Promise((res,rej)=>{
-      grecaptcha.ready(()=>{
-        grecaptcha.execute(RECAPTCHA_SITE_KEY,{action:'submit'})
-                  .then(token=>res(token))
-                  .catch(e=>rej(e));
-      });
-    });
-
-  async function fetchJson(url, token=''){
+  async function fetchJson(url){
     const ctrl = new AbortController();
     const t = setTimeout(()=>ctrl.abort(), 8000);
-    const r = await fetch(url+(token?`?token=${token}`:''), {signal:ctrl.signal});
-    clearTimeout(t);
-    if(!r.ok) throw new Error('fetch failed');
-    return r.json();
+    try{
+      const r = await fetch(url, {signal: ctrl.signal});
+      clearTimeout(t);
+      if(!r.ok) throw new Error('fetch failed');
+      return r.json();
+    }catch(e){
+      clearTimeout(t);
+      throw e;
+    }
   }
-  async function getCatalog(token){
-    const j = await fetchJson(SHEET_URL, token);
+  async function getCatalog(){
+    const j = await fetchJson(SHEET_URL);
     return j.products || [];
   }
-  async function getPrice(product,token){
-    const j = await fetchJson(SHEET_URL+'?product='+encodeURIComponent(product)+(token?`&token=${token}`:''));
+  async function getPrice(product){
+    const j = await fetchJson(SHEET_URL + '?product=' + encodeURIComponent(product));
     if(!j || typeof j.cheapestPrice!=='number') throw new Error('bad price');
     return j;
   }
 
-  /* ----------  UI ---------- */
+  /******** RENDER ********/
   function renderCatalog(){
     const c=document.getElementById('catalog');
     c.innerHTML='';
-    if(!catalog.length){c.innerHTML='<div class="empty">No products</div>';return;}
+    if(!catalog.length){c.innerHTML='<div class="empty">No products in sheet yet.</div>';return;}
     catalog.forEach(p=>{
       const inList=myList.some(i=>i.id===p.id);
       const div=document.createElement('div');
@@ -196,16 +109,19 @@
   function renderList(){
     const l=document.getElementById('list');
     l.innerHTML='';
-    if(!myList.length){l.innerHTML='<div class="empty">Empty</div>';updateTotal(0);return;}
+    if(!myList.length){l.innerHTML='<div class="empty">Your list is empty.</div>';document.getElementById('total').textContent='Total: R0.00';return;}
     myList.forEach(item=>{
       const div=document.createElement('div');
       div.className='card';
       div.innerHTML=`
-        <div class="info"><h4>${esc(item.name)}</h4><div class="price">
-          Avg: R${esc(item.priceInfo.avgPrice.toFixed(2))}<br>
-          Cheapest: <b>${esc(item.priceInfo.cheapestStore)} – R${esc(item.priceInfo.cheapestPrice.toFixed(2))}</b><br>
-          Range: R${esc(item.priceInfo.priceRange.min.toFixed(2))} – R${esc(item.priceInfo.priceRange.max.toFixed(2))}
-        </div></div>
+        <div class="info">
+          <h4>${esc(item.name)}</h4>
+          <div class="price">
+            Avg: R${esc(item.priceInfo.avgPrice.toFixed(2))}<br>
+            Cheapest: <b>${esc(item.priceInfo.cheapestStore)} – R${esc(item.priceInfo.cheapestPrice.toFixed(2))}</b><br>
+            Range: R${esc(item.priceInfo.priceRange.min.toFixed(2))} – R${esc(item.priceInfo.priceRange.max.toFixed(2))}
+          </div>
+        </div>
         <button class="btn remove-btn" data-id="${esc(item.id)}">Remove</button>`;
       l.appendChild(div);
     });
@@ -213,33 +129,16 @@
     document.getElementById('total').textContent='Total: R'+total.toFixed(2);
   }
 
-  /* ----------  watchers ---------- */
-  function startWatcher(item){
-    if(watchers[item.id]||Object.keys(watchers).length>=MAX_WATCHERS) return;
-    watchers[item.id]=setInterval(async()=>{
-      try{
-        const token=await verifyCaptcha();
-        const newInfo=await getPrice(item.name,token);
-        const oldP=parseFloat(item.priceInfo.cheapestPrice);
-        const newP=parseFloat(newInfo.cheapestPrice);
-        if(newP<oldP){
-          alert(`Price drop! ${item.name} now R${newP} at ${newInfo.cheapestStore} (was R${oldP})`);
-          item.priceInfo=newInfo; saveList(); renderList();
-        }
-      }catch(e){console.error('Watcher error',e);}
-    },15*60*1000);
-  }
-  function stopWatcher(id){if(watchers[id]){clearInterval(watchers[id]);delete watchers[id];}}
-
-  /* ----------  storage ---------- */
+  /******** STORAGE ********/
   function saveList(){
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify({v:1,data:myList.map(i=>({id:i.id,name:i.name,priceInfo:i.priceInfo}))}));}
-    catch(e){console.error(e);}
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({v:3, data: myList.map(i=>({id:i.id,name:i.name,priceInfo:i.priceInfo}))}));
+    }catch(e){console.error(e);}
   }
   function loadList(){
     try{
-      const raw=localStorage.getItem(STORAGE_KEY); if(!raw) return [];
-      const {v,data}=JSON.parse(raw); if(v!==1) return [];
+      const raw=localStorage.getItem(STORAGE_KEY);if(!raw) return [];
+      const {v,data}=JSON.parse(raw);if(v!==3) return [];
       return data.map(item=>{
         const base=catalog.find(p=>p.id===item.id);
         return base?{...base,priceInfo:item.priceInfo}:null;
@@ -247,24 +146,40 @@
     }catch{return [];}
   }
 
-  /* ----------  events ---------- */
+  /******** WATCHERS ********/
+  function startWatcher(item){
+    if(watchers[item.id]||Object.keys(watchers).length>=MAX_WATCHERS) return;
+    watchers[item.id]=setInterval(async()=>{
+      try{
+        const newInfo=await getPrice(item.name);
+        const oldP=parseFloat(item.priceInfo.cheapestPrice);
+        const newP=parseFloat(newInfo.cheapestPrice);
+        if(newP<oldP){
+          alert(`Price drop! ${item.name} now R${newP} at ${newInfo.cheapestStore} (was R${oldP})`);
+          item.priceInfo=newInfo; saveList(); renderList();
+        }
+      }catch(e){console.error('Watcher fetch failed',e);}
+    },15*60*1000);
+  }
+  function stopWatcher(id){if(watchers[id]){clearInterval(watchers[id]);delete watchers[id];}}
+
+  /******** EVENTS ********/
   let activeTab='catalog';
   document.addEventListener('click',async e=>{
     const btn=e.target.closest('button');
-    if(!btn)return;
+    if(!btn) return;
     const id=btn.dataset.id;
     const prod=catalog.find(p=>p.id===id)||myList.find(i=>i.id===id);
-    if(!prod)return;
+    if(!prod) return;
     if(btn.textContent.trim()==='Add'){
-      btn.disabled=true;btn.textContent='…';
+      btn.disabled=true; btn.textContent='…';
       try{
-        const token=await verifyCaptcha();
-        const priceInfo=await getPrice(prod.name,token);
+        const priceInfo=await getPrice(prod.name);
         myList.push({...prod,priceInfo}); saveList();
         startWatcher(myList.at(-1));
         renderCatalog(); if(activeTab==='list') renderList();
         btn.textContent='Added'; btn.className='btn remove-btn';
-      }catch(e){alert('Error adding item');console.error(e);}
+      }catch(e){alert('Could not fetch price');console.error(e);}
       btn.disabled=false;
     }else{
       myList=myList.filter(i=>i.id!==id); saveList();
@@ -281,11 +196,10 @@
     if(activeTab==='list') renderList();
   }));
 
-  /* ----------  boot ---------- */
+  /******** BOOT ********/
   (async()=>{
     try{
-      const token=await verifyCaptcha();
-      catalog=await getCatalog(token);
+      catalog=await getCatalog();
       myList=loadList();
       renderCatalog();
       myList.forEach(startWatcher);
