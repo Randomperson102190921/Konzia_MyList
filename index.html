@@ -4,19 +4,18 @@
   <meta charset="utf-8"/>
   <title>KONZIA – My List</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-
-  <!-- HTTPS only -->
-  <script>
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-      location.replace('https://' + location.host + location.pathname + location.search);
-    }
-  </script>
-
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          font-src     'self' https://fonts.gstatic.com;
+          style-src    'self' 'unsafe-inline' https://fonts.googleapis.com;
+          connect-src  'self' https://script.google.com https://script.googleusercontent.com;
+          img-src      'self' data: https://via.placeholder.com;
+          object-src   'none';
+          base-uri     'none';
+          frame-ancestors 'none';
+        ">
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
   <style>
     :root{
       --brand:#0b8043;
@@ -124,167 +123,221 @@
   <div class="total" id="total">Total: R0.00</div>
 </div>
 
-<!-- reCAPTCHA -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
-
 <script>
-  /* ----------  CONFIG  ---------- */
+  /* ----------  LIVE ENDPOINT  ---------- */
   const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwWlfeN4OijCyUvL4FCdcwDY10ZYnERuKV0E3cDZ-VZH1WFxEErFusOi3nzld3WKbb0aw/exec';
-  const RECAPTCHA_SITE_KEY = '6LcZK6ArAAAAAN4KHfdZ0W_UdBOvKX1KxZxeiWZk';
   const STORAGE_KEY = 'konzia-myList';
 
   let catalog = [];
-  let myList  = [];
+  let myList = [];
   const watchers = {};
 
-  /* ----------  SAFE DOM UTIL  ---------- */
-  function el(tag, props = {}, ...children) {
-    const e = document.createElement(tag);
-    Object.assign(e, props);
-    children.forEach(c => {
-      if (typeof c === 'string') e.appendChild(document.createTextNode(c));
-      else if (c) e.appendChild(c);
-    });
-    return e;
+  /* ----------  LocalStorage helpers  ---------- */
+  function saveList() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(myList.map(item => ({
+      id: item.id,
+      name: item.name,
+      priceInfo: item.priceInfo
+    }))));
   }
 
-  /* ----------  LOCAL STORAGE  ---------- */
-  function saveList() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(myList.map(i => ({id:i.id,name:i.name,priceInfo:i.priceInfo}))));
-  }
   function loadList() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
-      return JSON.parse(raw).map(item => {
+      const saved = JSON.parse(raw);
+      // Match saved items with current catalog to get updated data, keep saved priceInfo
+      return saved.map(item => {
         const base = catalog.find(p => p.id === item.id);
-        return base ? {...base, priceInfo: item.priceInfo} : null;
+        return base ? { ...base, priceInfo: item.priceInfo } : null;
       }).filter(Boolean);
-    } catch { return []; }
+    } catch (e) {
+      console.warn('Failed to load saved list:', e);
+      return [];
+    }
   }
 
-  /* ----------  API (with reCAPTCHA)  ---------- */
-  async function getReCaptchaToken(action='price') {
-    return new Promise((resolve, reject)=>{
-      if (!window.grecaptcha) return reject('reCAPTCHA not loaded');
-      grecaptcha.ready(()=> grecaptcha.execute(RECAPTCHA_SITE_KEY, {action}).then(resolve, reject));
-    });
-  }
+  /* ----------  API helpers  ---------- */
   async function getCatalog() {
-    const token = await getReCaptchaToken('catalog');
-    const r = await fetch(SHEET_URL, {method:'POST',body:new URLSearchParams({token})});
-    const j = await r.json();
-    return j.products || [];
-  }
-  async function getPrice(product) {
-    const token = await getReCaptchaToken('price');
-    const r = await fetch(SHEET_URL, {method:'POST',body:new URLSearchParams({product,token})});
-    return r.json();
+    try {
+      const r = await fetch(SHEET_URL, { method: 'GET' });
+      if (!r.ok) throw new Error(`Catalog fetch failed (${r.status})`);
+      const j = await r.json();
+      return Array.isArray(j?.products) ? j.products : [];
+    } catch (e) {
+      console.error('Failed to fetch catalog:', e);
+      return [];
+    }
   }
 
-  /* ----------  RENDER  ---------- */
+  async function getPrice(productName) {
+    try {
+      const url = new URL(SHEET_URL);
+      url.searchParams.set('product', productName);
+      const r = await fetch(url, { method: 'GET' });
+      if (!r.ok) throw new Error(`Price fetch failed (${r.status})`);
+      const data = await r.json();
+      // Defensive fallback for priceInfo fields
+      return {
+        avgPrice: parseFloat(data.avgPrice) || 0,
+        cheapestPrice: parseFloat(data.cheapestPrice) || 0,
+        cheapestStore: data.cheapestStore || 'N/A',
+        priceRange: {
+          min: parseFloat(data.priceRange?.min) || 0,
+          max: parseFloat(data.priceRange?.max) || 0
+        }
+      };
+    } catch (e) {
+      console.error('Failed to fetch price for', productName, e);
+      // Return empty price info on error
+      return {
+        avgPrice: 0,
+        cheapestPrice: 0,
+        cheapestStore: 'N/A',
+        priceRange: { min: 0, max: 0 }
+      };
+    }
+  }
+
+  /* ----------  Render helpers  ---------- */
   function renderCatalog() {
-    const c = document.getElementById('catalog'); c.innerHTML='';
-    if (!catalog.length) { c.appendChild(el('div',{className:'empty'},'No products in sheet yet.')); return; }
-    catalog.forEach(p=>{
-      const inList = myList.some(i=>i.id===p.id);
-      c.appendChild(
-        el('div',{className:'card'},
-          el('div',{className:'info'}, el('h4',{}, p.name)),
-          el('button',{className:'btn '+(inList?'remove-btn':'add-btn'),dataset:{id:p.id}}, inList?'Added':'Add')
-        )
-      );
+    const c = document.getElementById('catalog');
+    c.innerHTML = '';
+    if (!catalog.length) {
+      c.innerHTML = '<div class="empty">No products in sheet yet.</div>';
+      return;
+    }
+    catalog.forEach(p => {
+      const inList = myList.some(i => i.id === p.id);
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <div class="info"><h4>${p.name}</h4></div>
+        <button class="btn ${inList ? 'remove-btn' : 'add-btn'}" data-id="${p.id}" ${inList ? '' : ''}>${inList ? 'Added' : 'Add'}</button>
+      `;
+      c.appendChild(div);
     });
   }
+
   function renderList() {
-    const l=document.getElementById('list'); l.innerHTML='';
-    if(!myList.length){ l.appendChild(el('div',{className:'empty'},'Your list is empty.')); updateTotal(0); return; }
-    myList.forEach(item=>{
-      l.appendChild(
-        el('div',{className:'card'},
-          el('div',{className:'info'},
-            el('h4',{}, item.name),
-            el('div',{className:'price'},
-              `Avg: R${item.priceInfo.avgPrice}`, el('br'),
-              'Cheapest: ', el('b',{}, `${item.priceInfo.cheapestStore} – R${item.priceInfo.cheapestPrice}`), el('br'),
-              `Range: R${item.priceInfo.priceRange.min} – R${item.priceInfo.priceRange.max}`
-            )
-          ),
-          el('button',{className:'btn remove-btn',dataset:{id:item.id}},'Remove')
-        )
-      );
+    const l = document.getElementById('list');
+    l.innerHTML = '';
+    if (!myList.length) {
+      l.innerHTML = '<div class="empty">Your list is empty.</div>';
+      updateTotal(0);
+      return;
+    }
+    myList.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <div class="info">
+          <h4>${item.name}</h4>
+          <div class="price">
+            Avg: R${item.priceInfo.avgPrice.toFixed(2)}<br>
+            Cheapest: <b>${item.priceInfo.cheapestStore} – R${item.priceInfo.cheapestPrice.toFixed(2)}</b><br>
+            Range: R${item.priceInfo.priceRange.min.toFixed(2)} – R${item.priceInfo.priceRange.max.toFixed(2)}
+          </div>
+        </div>
+        <button class="btn remove-btn" data-id="${item.id}">Remove</button>
+      `;
+      l.appendChild(div);
     });
-    const total=myList.reduce((s,i)=>s+parseFloat(i.priceInfo.cheapestPrice),0);
+    const total = myList.reduce((s, i) => s + parseFloat(i.priceInfo.cheapestPrice || 0), 0);
     updateTotal(total);
   }
-  function updateTotal(amount){ document.getElementById('total').textContent='Total: R'+amount.toFixed(2); }
 
-  /* ----------  WATCHER  ---------- */
-  function startWatcher(item){
-    if(watchers[item.id]) return;
-    watchers[item.id]=setInterval(async()=>{
-      try {
-        const newInfo=await getPrice(item.name);
-        const old=parseFloat(item.priceInfo.cheapestPrice);
-        const now=parseFloat(newInfo.cheapestPrice);
-        if(now<old){ alert(`Price drop! ${item.name} is now R${now} (was R${old})`); item.priceInfo=newInfo; saveList(); renderList(); }
-      } catch(e){ console.error('Watcher error',e); }
-    },15*60*1000);
+  function updateTotal(amount) {
+    document.getElementById('total').textContent = 'Total: R' + amount.toFixed(2);
   }
-  function stopWatcher(id){ if(watchers[id]){ clearInterval(watchers[id]); delete watchers[id]; } }
 
-  /* ----------  EVENTS  ---------- */
-  document.addEventListener('click',async e=>{
-    const btn=e.target.closest('button');
-    if(!btn) return;
-    const id=btn.dataset.id;
-    const prod=catalog.find(p=>p.id===id) || myList.find(i=>i.id===id);
-    if(!prod) return;
-
-    if(btn.textContent.trim()==='Add'){
-      btn.disabled=true; btn.textContent='…';
-      try {
-        const priceInfo=await getPrice(prod.name);
-        myList.push({...prod,priceInfo});
+  /* ----------  Background watcher  ---------- */
+  function startWatcher(item) {
+    if (watchers[item.id]) return; // prevent duplicate watchers
+    watchers[item.id] = setInterval(async () => {
+      const newInfo = await getPrice(item.name);
+      const oldPrice = parseFloat(item.priceInfo.cheapestPrice) || 0;
+      const newPrice = parseFloat(newInfo.cheapestPrice) || 0;
+      if (newPrice < oldPrice) {
+        alert(`Price drop! ${item.name} is now R${newPrice.toFixed(2)} at ${newInfo.cheapestStore} (was R${oldPrice.toFixed(2)})`);
+        item.priceInfo = newInfo;
         saveList();
-        btn.textContent='Added'; btn.className='btn remove-btn'; btn.disabled=false;
-        startWatcher(myList.at(-1));
-        if(activeTab==='list') renderList();
-      } catch(err){
-        alert('Could not load price: '+err);
-        btn.disabled=false; btn.textContent='Add';
+        if (activeTab === 'list') renderList();
       }
-    }else{
-      myList=myList.filter(i=>i.id!==id);
+    }, 15 * 60 * 1000); // every 15 minutes
+  }
+
+  function stopWatcher(id) {
+    if (watchers[id]) {
+      clearInterval(watchers[id]);
+      delete watchers[id];
+    }
+  }
+
+  /* ----------  Event delegation  ---------- */
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const prod = catalog.find(p => p.id === id) || myList.find(i => i.id === id);
+    if (!prod) return;
+
+    if (btn.textContent.trim() === 'Add') {
+      btn.disabled = true;
+      btn.textContent = '…';
+      try {
+        const priceInfo = await getPrice(prod.name);
+        myList.push({ ...prod, priceInfo });
+        saveList();
+        btn.textContent = 'Added';
+        btn.className = 'btn remove-btn';
+        startWatcher(myList.at(-1));
+        if (activeTab === 'list') renderList();
+      } catch (e) {
+        alert('Failed to add item price info, try again.');
+        btn.textContent = 'Add';
+      }
+      btn.disabled = false;
+    } else {
+      // Remove from list
+      myList = myList.filter(i => i.id !== id);
       saveList();
       stopWatcher(id);
-      renderCatalog(); renderList();
+      renderCatalog();
+      if (activeTab === 'list') renderList();
     }
   });
 
-  let activeTab='catalog';
-  document.querySelectorAll('.tab').forEach(tab=>
-    tab.addEventListener('click',()=>{
+  /* ----------  Tabs switching ---------- */
+  let activeTab = 'catalog';
+  document.querySelectorAll('.tab').forEach(tab =>
+    tab.addEventListener('click', () => {
       document.querySelector('.tab.active').classList.remove('active');
       tab.classList.add('active');
-      document.querySelectorAll('.content').forEach(c=>c.style.display='none');
-      const target=tab.dataset.tab;
-      document.getElementById(target).style.display='block';
-      activeTab=target;
-      if(target==='list') renderList();
+      document.querySelectorAll('.content').forEach(c => c.style.display = 'none');
+      const target = tab.dataset.tab;
+      document.getElementById(target).style.display = 'block';
+      activeTab = target;
+      if (target === 'list') renderList();
+      else if (target === 'catalog') renderCatalog();
     })
   );
 
-  /* ----------  BOOT  ---------- */
-  (async()=>{
-    catalog=await getCatalog();
-    myList=loadList();
+  /* ----------  Boot (with loader) ---------- */
+  (async () => {
+    catalog = await getCatalog();
+    myList = loadList();
     renderCatalog();
-    myList.forEach(item=>startWatcher(item));
-    const loading=document.getElementById('loadingScreen');
-    const app=document.getElementById('app');
-    setTimeout(()=>{ loading.classList.add('fade-out'); app.style.display='block'; },1000);
+    myList.forEach(startWatcher);
+
+    const loading = document.getElementById('loadingScreen');
+    const app = document.getElementById('app');
+    setTimeout(() => {
+      loading.classList.add('fade-out');
+      app.style.display = 'block';
+    }, 1000);
   })();
+
 </script>
 </body>
 </html>
