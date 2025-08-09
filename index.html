@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{--brand:#0b8043;--surface:#ffffff;--surface-variant:#f8faf8;--on-surface:#1f1f1f}
+    :root{--brand:#0b8043;--surface:#fff;--surface-variant:#f8faf8;--on:#1f1f1f}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Google Sans',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;background:var(--surface-variant);color:var(--on-surface);min-height:100vh;padding:24px;font-size:15px}
-    #loadingScreen{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s ease}
+    body{font-family:'Google Sans',sans-serif;background:var(--surface-variant);color:var(--on);min-height:100vh;padding:24px;font-size:15px}
+    #loadingScreen{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
     #loadingScreen.fade-out{opacity:0;visibility:hidden}
     #loadingScreen .brand{font-size:32px;font-weight:600;color:var(--brand);margin-bottom:8px;animation:pulse 2s ease-in-out infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
@@ -34,13 +34,13 @@
 </head>
 <body>
 
-<!-- ---------- loading screen with Konzia ---------- -->
+<!-- loader -->
 <div id="loadingScreen">
   <div class="brand">Konzia</div>
   <div class="ring"></div>
 </div>
 
-<!-- ---------- main app ---------- -->
+<!-- app -->
 <div id="app" style="display:none">
   <header>KONZIA – My List</header>
   <div class="tabs">
@@ -53,21 +53,11 @@
 </div>
 
 <script>
-  /******** CONFIG ********/
   const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwWlfeN4OijCyUvL4FCdcwDY10ZYnERuKV0E3cDZ-VZH1WFxEErFusOi3nzld3WKbb0aw/exec';
-  const STORAGE_KEY = 'konzia-myList_v3';
+  const STORAGE_KEY = 'konzia_myList_v4';
+  let catalog = [], myList = [], watchers = {}, MAX_WATCHERS = 20;
 
-  let catalog = [];
-  let myList  = [];
-  const watchers = {};
-  const MAX_WATCHERS = 20;
-
-  /******** HELPERS ********/
-  const esc = str => {
-    const d = document.createElement('div');
-    d.textContent = str;
-    return d.innerHTML;
-  };
+  const esc = str => { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; };
   async function fetchJson(url){
     const ctrl = new AbortController();
     const t = setTimeout(()=>ctrl.abort(), 8000);
@@ -76,22 +66,26 @@
       clearTimeout(t);
       if(!r.ok) throw new Error('fetch failed');
       return r.json();
-    }catch(e){
-      clearTimeout(t);
-      throw e;
-    }
+    }catch(e){ clearTimeout(t); throw e; }
   }
   async function getCatalog(){
     const j = await fetchJson(SHEET_URL);
     return j.products || [];
   }
   async function getPrice(product){
-    const j = await fetchJson(SHEET_URL + '?product=' + encodeURIComponent(product));
-    if(!j || typeof j.cheapestPrice!=='number') throw new Error('bad price');
-    return j;
+    try{
+      const r = await fetch(SHEET_URL + '?product=' + encodeURIComponent(product));
+      const text = await r.text();
+      if(!text) throw new Error('Empty response');
+      const j = JSON.parse(text);
+      if(!j || typeof j.cheapestPrice !== 'number') throw new Error('Bad payload');
+      return j;
+    }catch(e){
+      console.warn(e);
+      return { avgPrice:0, cheapestPrice:0, cheapestStore:'N/A', priceRange:{min:0,max:0} };
+    }
   }
 
-  /******** RENDER ********/
   function renderCatalog(){
     const c=document.getElementById('catalog');
     c.innerHTML='';
@@ -129,26 +123,19 @@
     document.getElementById('total').textContent='Total: R'+total.toFixed(2);
   }
 
-  /******** STORAGE ********/
   function saveList(){
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({v:3, data: myList.map(i=>({id:i.id,name:i.name,priceInfo:i.priceInfo}))}));
-    }catch(e){console.error(e);}
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify({v:4,data:myList.map(i=>({id:i.id,name:i.name,priceInfo:i.priceInfo}))}));}
+    catch(e){console.error(e);}
   }
   function loadList(){
     try{
-      const raw=localStorage.getItem(STORAGE_KEY);if(!raw) return [];
-      const {v,data}=JSON.parse(raw);if(v!==3) return [];
-      return data.map(item=>{
-        const base=catalog.find(p=>p.id===item.id);
-        return base?{...base,priceInfo:item.priceInfo}:null;
-      }).filter(Boolean);
-    }catch{return [];}
+      const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return[];
+      const {v,data}=JSON.parse(raw);if(v!==4)return[];
+      return data.map(item=>{const base=catalog.find(p=>p.id===item.id);return base?{...base,priceInfo:item.priceInfo}:null}).filter(Boolean);
+    }catch{return[];}
   }
-
-  /******** WATCHERS ********/
   function startWatcher(item){
-    if(watchers[item.id]||Object.keys(watchers).length>=MAX_WATCHERS) return;
+    if(watchers[item.id]||Object.keys(watchers).length>=MAX_WATCHERS)return;
     watchers[item.id]=setInterval(async()=>{
       try{
         const newInfo=await getPrice(item.name);
@@ -156,35 +143,34 @@
         const newP=parseFloat(newInfo.cheapestPrice);
         if(newP<oldP){
           alert(`Price drop! ${item.name} now R${newP} at ${newInfo.cheapestStore} (was R${oldP})`);
-          item.priceInfo=newInfo; saveList(); renderList();
+          item.priceInfo=newInfo;saveList();renderList();
         }
       }catch(e){console.error('Watcher fetch failed',e);}
     },15*60*1000);
   }
   function stopWatcher(id){if(watchers[id]){clearInterval(watchers[id]);delete watchers[id];}}
 
-  /******** EVENTS ********/
   let activeTab='catalog';
   document.addEventListener('click',async e=>{
     const btn=e.target.closest('button');
-    if(!btn) return;
+    if(!btn)return;
     const id=btn.dataset.id;
     const prod=catalog.find(p=>p.id===id)||myList.find(i=>i.id===id);
-    if(!prod) return;
+    if(!prod)return;
     if(btn.textContent.trim()==='Add'){
-      btn.disabled=true; btn.textContent='…';
+      btn.disabled=true;btn.textContent='…';
       try{
         const priceInfo=await getPrice(prod.name);
-        myList.push({...prod,priceInfo}); saveList();
+        myList.push({...prod,priceInfo});saveList();
         startWatcher(myList.at(-1));
-        renderCatalog(); if(activeTab==='list') renderList();
-        btn.textContent='Added'; btn.className='btn remove-btn';
+        renderCatalog();if(activeTab==='list')renderList();
+        btn.textContent='Added';btn.className='btn remove-btn';
       }catch(e){alert('Could not fetch price');console.error(e);}
       btn.disabled=false;
     }else{
-      myList=myList.filter(i=>i.id!==id); saveList();
+      myList=myList.filter(i=>i.id!==id);saveList();
       stopWatcher(id);
-      renderCatalog(); renderList();
+      renderCatalog();renderList();
     }
   });
   document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
@@ -193,10 +179,9 @@
     document.querySelectorAll('.content').forEach(c=>c.style.display='none');
     activeTab=t.dataset.tab;
     document.getElementById(activeTab).style.display='block';
-    if(activeTab==='list') renderList();
+    if(activeTab==='list')renderList();
   }));
 
-  /******** BOOT ********/
   (async()=>{
     try{
       catalog=await getCatalog();
