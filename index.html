@@ -36,33 +36,29 @@
   <div class="total" id="total">Total: $0.00</div>
 
   <script>
-    /* ---------- state ---------- */
-    let sheetProducts = [];  // {id,name,image}
-    let myList = [];
+    let catalog = [];   // from sheet
+    let myList  = [];   // items with enriched prices
     const watchers = {};
 
-    /* ---------- fetch catalog from sheet ---------- */
-    async function fetchCatalog() {
-      const res = await fetch('/api/index.js');
-      const data = await res.json();          // {products:[...]}
-      sheetProducts = data.products || [];
+    async function getCatalog() {
+      const r = await fetch('/api/index.js');   // no product param → catalog
+      const j = await r.json();
+      return j.products || [];
     }
 
-    /* ---------- fetch enriched price for one product ---------- */
-    async function fetchPrice(product) {
-      const res = await fetch(`/api/index.js?product=${encodeURIComponent(product)}`);
-      return res.json();
+    async function getPrice(product) {
+      const r = await fetch(`/api/index.js?product=${encodeURIComponent(product)}`);
+      return r.json();
     }
 
-    /* ---------- render helpers ---------- */
     function renderCatalog() {
       const c = document.getElementById('catalog');
       c.innerHTML = '';
-      if (!sheetProducts.length) {
+      if (!catalog.length) {
         c.innerHTML = '<div class="empty">No products in sheet yet.</div>';
         return;
       }
-      sheetProducts.forEach(p => {
+      catalog.forEach(p => {
         const inList = myList.some(i => i.id === p.id);
         const div = document.createElement('div');
         div.className = 'card';
@@ -108,11 +104,10 @@
       document.getElementById('total').textContent = `Total: $${amount.toFixed(2)}`;
     }
 
-    /* ---------- background watcher ---------- */
     function startWatcher(item) {
       if (watchers[item.id]) return;
       watchers[item.id] = setInterval(async () => {
-        const newInfo = await fetchPrice(item.name);
+        const newInfo = await getPrice(item.name);
         const old = parseFloat(item.priceInfo.cheapestPrice);
         const now = parseFloat(newInfo.cheapestPrice);
         if (now < old) {
@@ -130,18 +125,17 @@
       }
     }
 
-    /* ---------- events ---------- */
     document.addEventListener('click', async e => {
       const btn = e.target.closest('button');
       if (!btn) return;
       const id = btn.dataset.id;
-      const prod = sheetProducts.find(p => p.id === id) || myList.find(i => i.id === id);
+      const prod = catalog.find(p => p.id === id) || myList.find(i => i.id === id);
       if (!prod) return;
 
       if (btn.textContent.trim() === 'Add') {
         btn.disabled = true;
         btn.textContent = '…';
-        const priceInfo = await fetchPrice(prod.name);
+        const priceInfo = await getPrice(prod.name);
         myList.push({...prod, priceInfo});
         btn.textContent = 'Added';
         btn.className = 'btn remove-btn';
@@ -156,7 +150,6 @@
       }
     });
 
-    /* ---------- tab switch ---------- */
     let activeTab = 'catalog';
     document.querySelectorAll('.tab').forEach(tab =>
       tab.addEventListener('click', () => {
@@ -170,9 +163,8 @@
       })
     );
 
-    /* ---------- init ---------- */
     (async () => {
-      await fetchCatalog();
+      catalog = await getCatalog();
       renderCatalog();
     })();
   </script>
