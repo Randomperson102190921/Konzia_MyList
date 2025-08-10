@@ -1,276 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <title>KONZIA – My List</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300   ;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      --brand:#0b8043;
-      --brand-light:#e6f4ea;
-      --surface:#ffffff;
-      --surface-variant:#f8faf8;
-      --on-surface:#1f1f1f;
-      --on-surface-variant:#444746;
-      --outline:#c4c7c5;
-      --outline-variant:#e1e3e1;
-      --error:#c62828;
-      --radius:20px;
-      --radius-pill:100px;
-      --shadow-1:0 2px 8px 0 rgba(0,0,0,.06),0 2px 4px 0 rgba(0,0,0,.04);
-      --shadow-2:0 4px 12px 0 rgba(0,0,0,.08),0 2px 8px 0 rgba(0,0,0,.06);
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{
-      font-family:'Google Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-      background:var(--surface-variant);
-      color:var(--on-surface);
-      min-height:100vh;
-      padding:24px;
-      font-size:15px;
-    }
-    #loadingScreen{
-      position:fixed;inset:0;background:#fff;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      z-index:9999;transition:opacity .4s ease,visibility .4s ease;
-    }
-    #loadingScreen.fade-out{opacity:0;visibility:hidden}
-    #loadingScreen .brand{font-size:32px;font-weight:600;color:var(--brand);margin-bottom:8px;animation:pulse 2s ease-in-out infinite}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
-    .ring{width:40px;height:40px;border:4px solid var(--outline-variant);border-top-color:var(--brand);border-radius:50%;animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    header{
-      position:sticky;top:0;z-index:10;
-      background:var(--brand);color:#fff;
-      padding:16px 24px;font-weight:600;font-size:1.25rem;
-      border-radius:var(--radius) var(--radius) 0 0;
-    }
-    .tabs{
-      display:flex;background:var(--surface);
-      box-shadow:var(--shadow-1);
-    }
-    .tab{
-      flex:1;text-align:center;padding:18px 0;
-      font-weight:600;font-size:.95rem;
-      color:var(--on-surface-variant);cursor:pointer;
-      transition:.2s;
-    }
-    .tab.active{color:var(--brand);border-bottom:2px solid var(--brand)}
-    .content{padding:24px}
-    .card{
-      display:flex;align-items:center;
-      background:var(--surface);
-      border-radius:var(--radius);
-      margin-bottom:12px;
-      box-shadow:var(--shadow-1);
-      padding:16px;
-      transition:.25s;
-    }
-    .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
-    .info{flex:1;padding:0 12px}
-    .info h4{margin:0 0 4px;font-size:1rem;color:var(--on-surface)}
-    .price{font-size:.85rem;color:var(--on-surface-variant)}
-    .price b{color:var(--on-surface)}
-    .btn{
-      padding:8px 18px;
-      border:none;border-radius:var(--radius-pill);
-      font-weight:600;font-size:.85rem;
-      cursor:pointer;transition:.2s;
-    }
-    .add-btn{background:var(--brand);color:#fff}
-    .add-btn:hover{background:#086e3b}
-    .remove-btn{background:var(--outline-variant);color:var(--on-surface)}
-    .remove-btn:hover{background:var(--outline)}
-    .empty{text-align:center;margin-top:40px;color:var(--on-surface-variant)}
-    .total{
-      position:fixed;bottom:0;left:0;right:0;
-      background:var(--surface);padding:16px;
-      text-align:center;font-weight:600;font-size:1rem;
-      box-shadow:0 -2px 8px rgba(0,0,0,.06)
-    }
-  </style>
+<meta charset="utf-8"/>
+<title>KONZIA – My List</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://script.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://script.google.com; connect-src https://script.google.com; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"/>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0b8043;--brand-light:#e6f4ea;--surface:#fff;--surface-variant:#f8faf8;--on-surface:#1f1f1f;--on-surface-variant:#444746;--outline:#c4c7c5;--outline-variant:#e1e3e1;--error:#c62828;--radius:20px;--radius-pill:100px;--shadow-1:0 2px 8px rgba(0,0,0,.06),0 2px 4px rgba(0,0,0,.04);--shadow-2:0 4px 12px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Google Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--surface-variant);color:var(--on-surface);min-height:100vh;padding:24px;font-size:15px}
+#loadingScreen{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s ease,visibility .4s ease}
+#loadingScreen.fade-out{opacity:0;visibility:hidden}
+#loadingScreen .brand{font-size:32px;font-weight:600;color:var(--brand);margin-bottom:8px;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.ring{width:40px;height:40px;border:4px solid var(--outline-variant);border-top-color:var(--brand);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+header{position:sticky;top:0;z-index:10;background:var(--brand);color:#fff;padding:16px 24px;font-weight:600;font-size:1.25rem;border-radius:var(--radius) var(--radius) 0 0}
+.tabs{display:flex;background:var(--surface);box-shadow:var(--shadow-1)}
+.tab{flex:1;text-align:center;padding:18px 0;font-weight:600;font-size:.95rem;color:var(--on-surface-variant);cursor:pointer;transition:.2s}
+.tab.active{color:var(--brand);border-bottom:2px solid var(--brand)}
+.content{padding:24px}
+.card{display:flex;align-items:center;background:var(--surface);border-radius:var(--radius);margin-bottom:12px;box-shadow:var(--shadow-1);padding:16px;transition:.25s}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+.info{flex:1;padding:0 12px}
+.info h4{margin:0 0 4px;font-size:1rem;color:var(--on-surface)}
+.price{font-size:.85rem;color:var(--on-surface-variant)}
+.price b{color:var(--on-surface)}
+.btn{padding:8px 18px;border:none;border-radius:var(--radius-pill);font-weight:600;font-size:.85rem;cursor:pointer;transition:.2s}
+.add-btn{background:var(--brand);color:#fff}
+.add-btn:hover{background:#086e3b}
+.remove-btn{background:var(--outline-variant);color:var(--on-surface)}
+.remove-btn:hover{background:var(--outline)}
+.empty{text-align:center;margin-top:40px;color:var(--on-surface-variant)}
+.total{position:fixed;bottom:0;left:0;right:0;background:var(--surface);padding:16px;text-align:center;font-weight:600;font-size:1rem;box-shadow:0 -2px 8px rgba(0,0,0,.06)}
+</style>
 </head>
 <body>
-
-<!-- ---------- loading screen ---------- -->
-<div id="loadingScreen">
-  <div class="brand">Konzia</div>
-  <div class="ring"></div>
-</div>
-
-<!-- ---------- main app ---------- -->
+<div id="loadingScreen"><div class="brand">Konzia</div><div class="ring"></div></div>
 <div id="app" style="display:none">
-  <header>KONZIA – My List</header>
-  <div class="tabs">
-    <div class="tab active" data-tab="catalog">Catalog</div>
-    <div class="tab" data-tab="list">My List</div>
-  </div>
-
-  <div id="catalog" class="content"></div>
-  <div id="list" class="content" style="display:none;"></div>
-  <div class="total" id="total">Total: R0.00</div>
+<header>KONZIA – My List</header>
+<div class="tabs">
+<div class="tab active" data-tab="catalog">Catalog</div>
+<div class="tab" data-tab="list">My List</div>
 </div>
-
+<div id="catalog" class="content"></div>
+<div id="list" class="content" style="display:none;"></div>
+<div class="total" id="total">Total: R0.00</div>
+</div>
 <script>
-  /* ----------  LIVE ENDPOINT  ---------- */
-  const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwWlfeN4OijCyUvL4FCdcwDY10ZYnERuKV0E3cDZ-VZH1WFxEErFusOi3nzld3WKbb0aw/exec   ';
-  const STORAGE_KEY = 'konzia-myList';
+(()=>{"use strict";
+const SHEET_URL="https://script.google.com/macros/s/AKfycbwWlfeN4OijCyUvL4FCdcwDY10ZYnERuKV0E3cDZ-VZH1WFxEErFusOi3nzld3WKbb0aw/exec";
+const STORAGE_KEY="konzia-myList";
+let catalog=[],myList=[],watchers={},activeTab="catalog";
 
-  let catalog = [];
-  let myList  = [];
-  const watchers = {};
-
-  /* ----------  LocalStorage helpers  ---------- */
-  function saveList() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(myList.map(item => ({
-      id: item.id,
-      name: item.name,
-      priceInfo: item.priceInfo
-    }))));
-  }
-  function loadList() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      return JSON.parse(raw).map(item => {
-        const base = catalog.find(p => p.id === item.id);
-        return base ? { ...base, priceInfo: item.priceInfo } : null;
-      }).filter(Boolean);
-    } catch {
-      return [];
-    }
-  }
-
-  /* ----------  API helpers  ---------- */
-  async function getCatalog() {
-    const r = await fetch(SHEET_URL);
-    const j = await r.json();
-    return j.products || [];
-  }
-  async function getPrice(product) {
-    const r = await fetch(SHEET_URL + '?product=' + encodeURIComponent(product));
-    return r.json();
-  }
-
-  /* ----------  Render helpers  ---------- */
-  function renderCatalog() {
-    const c = document.getElementById('catalog');
-    c.innerHTML = '';
-    if (!catalog.length){
-      c.innerHTML = '<div class="empty">No products in sheet yet.</div>';
-      return;
-    }
-    catalog.forEach(p=>{
-      const inList = myList.some(i=>i.id===p.id);
-      const div=document.createElement('div');
-      div.className='card';
-      div.innerHTML=`
-        <div class="info"><h4>${p.name}</h4></div>
-        <button class="btn ${inList?'remove-btn':'add-btn'}" data-id="${p.id}">${inList?'Added':'Add'}</button>
-      `;
-      c.appendChild(div);
-    });
-  }
-  function renderList() {
-    const l=document.getElementById('list');
-    l.innerHTML='';
-    if(!myList.length){
-      l.innerHTML='<div class="empty">Your list is empty.</div>';
-      updateTotal(0);
-      return;
-    }
-    myList.forEach(item=>{
-      const div=document.createElement('div');
-      div.className='card';
-      div.innerHTML=`
-        <div class="info">
-          <h4>${item.name}</h4>
-          <div class="price">
-            Avg: R${item.priceInfo.avgPrice}<br>
-            Cheapest: <b>${item.priceInfo.cheapestStore} – R${item.priceInfo.cheapestPrice}</b><br>
-            Range: R${item.priceInfo.priceRange.min} – R${item.priceInfo.priceRange.max}
-          </div>
-        </div>
-        <button class="btn remove-btn" data-id="${item.id}">Remove</button>
-      `;
-      l.appendChild(div);
-    });
-    const total=myList.reduce((s,i)=>s+parseFloat(i.priceInfo.cheapestPrice),0);
-    updateTotal(total);
-  }
-  function updateTotal(amount){
-    document.getElementById('total').textContent='Total: R'+amount.toFixed(2);
-  }
-
-  /* ----------  Background watcher  ---------- */
-  function startWatcher(item){
-    if(watchers[item.id])return;
-    watchers[item.id]=setInterval(async()=>{
-      const newInfo=await getPrice(item.name);
-      const old=parseFloat(item.priceInfo.cheapestPrice);
-      const now=parseFloat(newInfo.cheapestPrice);
-      if(now<old){
-        alert(`Price drop! ${item.name} is now R${now} at ${newInfo.cheapestStore} (was R${old})`);
-        item.priceInfo=newInfo;
-        saveList();
-        renderList();
-      }
-    },15*60*1000);
-  }
-  function stopWatcher(id){
-    if(watchers[id]){clearInterval(watchers[id]);delete watchers[id];}
-  }
-
-  /* ----------  Event delegation  ---------- */
-  document.addEventListener('click',async e=>{
-    const btn=e.target.closest('button');
-    if(!btn)return;
-    const id=btn.dataset.id;
-    const prod=catalog.find(p=>p.id===id)||myList.find(i=>i.id===id);
-    if(!prod)return;
-    if(btn.textContent.trim()==='Add'){
-      btn.disabled=true;btn.textContent='…';
-      const priceInfo=await getPrice(prod.name);
-      myList.push({...prod,priceInfo});
-      saveList();
-      btn.textContent='Added';btn.className='btn remove-btn';btn.disabled=false;
-      startWatcher(myList.at(-1));
-      if(activeTab==='list')renderList();
-    }else{
-      myList=myList.filter(i=>i.id!==id);
-      saveList();
-      stopWatcher(id);
-      renderCatalog();renderList();
-    }
-  });
-
-  let activeTab='catalog';
-  document.querySelectorAll('.tab').forEach(tab=>
-    tab.addEventListener('click',()=>{
-      document.querySelector('.tab.active').classList.remove('active');
-      tab.classList.add('active');
-      document.querySelectorAll('.content').forEach(c=>c.style.display='none');
-      const target=tab.dataset.tab;
-      document.getElementById(target).style.display='block';
-      activeTab=target;
-      if(target==='list')renderList();
-    })
-  );
-
-  /* ----------  Boot (with loader)  ---------- */
-  (async()=>{
-    catalog=await getCatalog();
-    myList=loadList();          // restore persisted list
-    renderCatalog();
-    myList.forEach(item=>startWatcher(item)); // restart watchers
-    const loading=document.getElementById('loadingScreen');
-    const app=document.getElementById('app');
-    setTimeout(()=>{
-      loading.classList.add('fade-out');
-      app.style.display='block';
-    },1000);
-  })();
+function sanitize(str){return String(str).replace(/[&<>]/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[s]));}
+function saveList(){localStorage.setItem(STORAGE_KEY,JSON.stringify(myList.map(item=>({id:item.id,name:item.name,priceInfo:item.priceInfo}))));}
+function loadList(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return[];return JSON.parse(raw).map(item=>{const base=catalog.find(p=>p.id===item.id);return base?{...base,priceInfo:item.priceInfo}:null;}).filter(Boolean);}catch{return[];}}
+async function getCatalog(){const r=await fetch(SHEET_URL,{method:"GET"});const j=await r.json();return j.products||[];}
+async function getPrice(product){const r=await fetch(SHEET_URL+"?product="+encodeURIComponent(product),{method:"GET"});return r.json();}
+function renderCatalog(){const c=document.getElementById("catalog");c.innerHTML="";if(!catalog.length){c.innerHTML='<div class="empty">No products in sheet yet.</div>';return;}catalog.forEach(p=>{const inList=myList.some(i=>i.id===p.id);const div=document.createElement("div");div.className="card";div.innerHTML=`<div class="info"><h4>${sanitize(p.name)}</h4></div><button class="btn ${inList?"remove-btn":"add-btn"}" data-id="${p.id}">${inList?"Added":"Add"}</button>`;c.appendChild(div);});}
+function renderList(){const l=document.getElementById("list");l.innerHTML="";if(!myList.length){l.innerHTML='<div class="empty">Your list is empty.</div>';updateTotal(0);return;}myList.forEach(item=>{const div=document.createElement("div");div.className="card";div.innerHTML=`<div class="info"><h4>${sanitize(item.name)}</h4><div class="price">Avg: R${sanitize(item.priceInfo.avgPrice)}<br>Cheapest: <b>${sanitize(item.priceInfo.cheapestStore)} – R${sanitize(item.priceInfo.cheapestPrice)}</b><br>Range: R${sanitize(item.priceInfo.priceRange.min)} – R${sanitize(item.priceInfo.priceRange.max)}</div></div><button class="btn remove-btn" data-id="${item.id}">Remove</button>`;l.appendChild(div);});const total=myList.reduce((s,i)=>s+parseFloat(i.priceInfo.cheapestPrice),0);updateTotal(total);}
+function updateTotal(amount){document.getElementById("total").textContent="Total: R"+amount.toFixed(2);}
+function startWatcher(item){if(watchers[item.id])return;watchers[item.id]=setInterval(async()=>{const newInfo=await getPrice(item.name);const old=parseFloat(item.priceInfo.cheapestPrice);const now=parseFloat(newInfo.cheapestPrice);if(now<old){alert(`Price drop! ${item.name} is now R${now} at ${newInfo.cheapestStore} (was R${old})`);item.priceInfo=newInfo;saveList();renderList();}},9e5);}
+function stopWatcher(id){if(watchers[id]){clearInterval(watchers[id]);delete watchers[id];}}
+document.addEventListener("click",async e=>{const btn=e.target.closest("button");if(!btn)return;const id=btn.dataset.id;const prod=catalog.find(p=>p.id===id)||myList.find(i=>i.id===id);if(!prod)return;if(btn.textContent.trim()==="Add"){btn.disabled=true;btn.textContent="…";const priceInfo=await getPrice(prod.name);myList.push({...prod,priceInfo});saveList();btn.textContent="Added";btn.className="btn remove-btn";btn.disabled=false;startWatcher(myList.at(-1));if(activeTab==="list")renderList();}else{myList=myList.filter(i=>i.id!==id);saveList();stopWatcher(id);renderCatalog();renderList();}});
+document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>{document.querySelector(".tab.active").classList.remove("active");tab.classList.add("active");document.querySelectorAll(".content").forEach(c=>c.style.display="none");const target=tab.dataset.tab;document.getElementById(target).style.display="block";activeTab=target;if(target==="list")renderList();}));
+(async()=>{catalog=await getCatalog();myList=loadList();renderCatalog();myList.forEach(item=>startWatcher(item));const loading=document.getElementById("loadingScreen");const app=document.getElementById("app");setTimeout(()=>{loading.classList.add("fade-out");app.style.display="block";},1000);})();
+})();
 </script>
 </body>
 </html>
