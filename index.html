@@ -132,7 +132,7 @@
   const watchers = {};
   let activeTab = 'catalog';
 
-  // Save list to localStorage
+  /* ---------- persistence ---------- */
   function saveList() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(myList.map(item => ({
@@ -144,8 +144,6 @@
       console.warn('Failed to save list:', e);
     }
   }
-
-  // Load list from localStorage, match with current catalog items
   function loadList() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -161,7 +159,7 @@
     }
   }
 
-  // Fetch catalog from backend
+  /* ---------- data ---------- */
   async function getCatalog() {
     try {
       const r = await fetch(SHEET_URL);
@@ -173,8 +171,6 @@
       return [];
     }
   }
-
-  // Fetch price info for one product
   async function getPrice(productName) {
     try {
       const url = new URL(SHEET_URL);
@@ -202,7 +198,7 @@
     }
   }
 
-  // Render catalog tab
+  /* ---------- render ---------- */
   function renderCatalog() {
     const container = document.getElementById('catalog');
     container.innerHTML = '';
@@ -221,8 +217,6 @@
       container.appendChild(card);
     });
   }
-
-  // Render list tab
   function renderList() {
     const container = document.getElementById('list');
     container.innerHTML = '';
@@ -250,15 +244,13 @@
     const total = myList.reduce((sum, item) => sum + (parseFloat(item.priceInfo.cheapestPrice) || 0), 0);
     updateTotal(total);
   }
-
-  // Update total price display
   function updateTotal(amount) {
     document.getElementById('total').textContent = 'Total: R' + amount.toFixed(2);
   }
 
-  // Start watching price for a list item (poll every 15 min)
+  /* ---------- watchers ---------- */
   function startWatcher(item) {
-    if (watchers[item.id]) return; // avoid duplicates
+    if (watchers[item.id]) return;
     watchers[item.id] = setInterval(async () => {
       try {
         const newInfo = await getPrice(item.name);
@@ -275,8 +267,6 @@
       }
     }, 15 * 60 * 1000);
   }
-
-  // Stop watcher for removed items
   function stopWatcher(id) {
     if (watchers[id]) {
       clearInterval(watchers[id]);
@@ -284,18 +274,16 @@
     }
   }
 
-  // Handle Add/Remove button clicks with event delegation
+  /* ---------- events ---------- */
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const id = btn.dataset.id;
     if (!id) return;
 
-    // Find product in catalog or list
     const prodInCatalog = catalog.find(p => p.id === id);
     const prodInList = myList.find(p => p.id === id);
 
-    // Add item
     if (btn.textContent.trim() === 'Add' && prodInCatalog) {
       btn.disabled = true;
       btn.textContent = '…';
@@ -313,11 +301,10 @@
         btn.textContent = 'Add';
       }
       btn.disabled = false;
-      renderCatalog(); // refresh catalog buttons to update added status
+      renderCatalog();
       return;
     }
 
-    // Remove item
     if (btn.textContent.trim() === 'Remove' && prodInList) {
       myList = myList.filter(item => item.id !== id);
       saveList();
@@ -328,10 +315,9 @@
     }
   });
 
-  // Tab switching logic
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      if (tab.classList.contains('active')) return; // ignore repeated clicks
+      if (tab.classList.contains('active')) return;
       document.querySelector('.tab.active').classList.remove('active');
       tab.classList.add('active');
 
@@ -346,7 +332,7 @@
     });
   });
 
-  // Initial app boot with error handling
+  /* ---------- boot ---------- */
   (async () => {
     try {
       catalog = await getCatalog();
@@ -354,7 +340,6 @@
       renderCatalog();
       myList.forEach(startWatcher);
 
-      // Show app, hide loader
       const loading = document.getElementById('loadingScreen');
       const app = document.getElementById('app');
       setTimeout(() => {
